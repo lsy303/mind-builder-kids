@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>بنّاء العقل - متابعة تطور الأبناء</title>
+<style>
+  :root{
+    --bg:#eef1f8; --panel:#ffffff; --panel2:#f4f6fb;
+    --gold:#d68910; --gold-d:#b5740c;
+    --green:#0e9f6e; --blue:#2563eb; --purple:#7c3aed; --pink:#db2777;
+    --text:#1e2433; --muted:#5b6478; --border:#d7dceb;
+    --needle:#dc2626;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI',Tahoma,Arial,sans-serif;
+    background:linear-gradient(180deg,#f7f9fd 0%, var(--bg) 100%);
+    color:var(--text); min-height:100vh; padding:20px;
+  }
+  .wrap{max-width:980px;margin:0 auto;}
+  .title{
+    text-align:center; margin-bottom:6px;
+  }
+  .title h1{
+    font-size:28px; margin:0;
+    background:linear-gradient(90deg,var(--gold),var(--pink));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .title p{color:var(--muted); margin:6px 0 0; font-size:13px;}
+
+  .topbar{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:18px 0;}
+  .child-tab{
+    padding:10px 18px; border-radius:14px; cursor:pointer; border:2px solid var(--border);
+    background:var(--panel); transition:.2s; font-weight:bold; font-size:15px;
+    display:flex; align-items:center; gap:8px; box-shadow:0 1px 3px rgba(30,40,80,.06);
+  }
+  .child-tab.active{ border-color:var(--gold); background:linear-gradient(135deg,#fff7e8,#fff); box-shadow:0 4px 14px rgba(214,137,16,.18);}
+  .child-tab .avatar{font-size:20px;}
+  .add-child{
+    padding:10px 16px; border-radius:14px; cursor:pointer; border:2px dashed var(--border);
+    background:transparent; color:var(--muted); font-weight:bold;
+  }
+  .add-child:hover{color:var(--gold); border-color:var(--gold);}
+
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:22px; margin-bottom:18px; box-shadow:0 2px 10px rgba(30,40,80,.05);}
+  .summary-row{display:flex; gap:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;}
+  .ring-box{display:flex; align-items:center; gap:16px;}
+  .ring-num{font-size:30px; font-weight:bold; color:var(--gold);}
+  .ring-label{color:var(--muted); font-size:13px;}
+  .stat-pill{
+    background:var(--panel2); border:1px solid var(--border); border-radius:12px;
+    padding:10px 16px; text-align:center; min-width:90px;
+  }
+  .stat-pill .v{font-size:20px; font-weight:bold;}
+  .stat-pill .l{font-size:11px; color:var(--muted); margin-top:2px;}
+
+  .cats{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:18px;}
+  .cat{
+    background:var(--panel2); border:1px solid var(--border); border-radius:16px; padding:16px;
+    position:relative; overflow:hidden; box-shadow:0 1px 4px rgba(30,40,80,.05);
+  }
+  .cat::before{
+    content:""; position:absolute; inset:0; opacity:.08; pointer-events:none;
+  }
+  .cat-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .cat-icon{font-size:22px;}
+  .cat-name{font-weight:bold; font-size:15px;}
+  .cat-level{font-size:11px; color:var(--muted);}
+  .bar-bg{background:#e4e8f3; border-radius:10px; height:14px; overflow:hidden; border:1px solid var(--border);}
+  .bar-fill{height:100%; border-radius:10px; transition:width .5s ease;}
+  .cat-foot{display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:12px; color:var(--muted);}
+  .btn{
+    border:none; border-radius:10px; padding:8px 14px; cursor:pointer; font-weight:bold; font-size:13px;
+    transition:.15s;
+  }
+  .btn:active{transform:scale(.95);}
+  .btn-add{background:var(--gold); color:#fff;}
+  .btn-add:hover{background:var(--gold-d);}
+  .btn-sub{background:transparent; color:var(--muted); border:1px solid var(--border);}
+  .btn-sub:hover{color:#dc2626; border-color:#dc2626;}
+
+  .log-section{margin-top:8px;}
+  .log-section h3{font-size:15px; margin:0 0 10px; color:var(--gold);}
+  .log-row{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); padding:6px 0; border-bottom:1px dashed var(--border);}
+  .log-row:last-child{border-bottom:none;}
+
+  .badges{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;}
+  .badge{
+    padding:8px 14px; border-radius:30px; font-size:13px; font-weight:bold; display:flex; gap:6px; align-items:center;
+    border:1px solid var(--border); background:var(--panel2); color:var(--muted);
+  }
+  .badge.unlocked{ background:linear-gradient(135deg,#fff3da,#fff); color:var(--gold-d); border-color:var(--gold);}
+
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(20,25,45,.45); display:none; align-items:center; justify-content:center; z-index:50;
+  }
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:24px; width:min(360px,90vw); box-shadow:0 10px 40px rgba(20,25,45,.25);}
+  .modal h3{margin-top:0;}
+  .modal input, .modal select{
+    width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); color:var(--text);
+    margin-bottom:12px; font-size:14px;
+  }
+  .modal-actions{display:flex; gap:10px; justify-content:flex-end;}
+  .btn-cancel{background:transparent; color:var(--muted); border:1px solid var(--border);}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:linear-gradient(135deg,var(--gold),#f0a93c); color:#fff; padding:12px 22px; border-radius:30px;
+    font-weight:bold; transition:.3s; z-index:99; box-shadow:0 8px 24px rgba(20,25,45,.25); font-size:14px;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .empty{text-align:center; color:var(--muted); padding:40px 0;}
+  .loading{text-align:center; color:var(--muted); padding:40px;}
+
+  .gauge-wrap{display:flex; align-items:center; gap:18px; flex-wrap:wrap;}
+  .brain-box{position:relative; width:96px; height:96px; flex:none;}
+  .brain-box svg{width:100%; height:100%; display:block;}
+  .brain-pct{
+    position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+    font-size:12px; font-weight:bold; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5);
+  }
+  .speedo-box{position:relative; width:130px; height:78px; flex:none;}
+  .speedo-box svg{width:100%; height:100%; display:block;}
+  .speedo-label{position:absolute; bottom:0; left:50%; transform:translateX(-50%); font-size:18px; font-weight:bold; color:var(--gold-d);}
+
+  .goal-box{
+    background:var(--panel2); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-top:16px;
+  }
+  .goal-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;}
+  .goal-title{font-weight:bold; font-size:14px;}
+  .goal-select{padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:#fff; font-size:12px;}
+  .goal-bar-bg{background:#e4e8f3; border-radius:10px; height:10px; overflow:hidden; border:1px solid var(--border); margin-top:10px;}
+  .goal-bar-fill{height:100%; border-radius:10px; background:linear-gradient(90deg,var(--green),var(--gold)); transition:width .5s ease;}
+  .goal-banner{
+    margin-top:10px; padding:8px 12px; border-radius:10px; font-size:13px; font-weight:bold; display:flex; align-items:center; gap:8px;
+  }
+  .goal-banner.calm{background:#eaf7f0; color:#0e7a55; border:1px solid #bfe8d4;}
+  .goal-banner.warn{background:#fff4e0; color:#92600a; border:1px solid #f6d999;}
+  .goal-banner.urgent{background:#fde8e8; color:#b91c1c; border:1px solid #f5b5b5;}
+  .goal-history{margin-top:10px; font-size:12px; color:var(--muted);}
+  .goal-history-row{display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--border);}
+  .goal-history-row:last-child{border-bottom:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title">
+    <h1>🧠 بنّاء العقل</h1>
+    <p>مؤشر تطور القراءة، الكتابة، حفظ القرآن، والمهارات بأهداف دورية</p>
+  </div>
+
+  <div class="topbar" id="childTabs"></div>
+  <div style="text-align:center;margin-bottom:14px;">
+    <button class="btn btn-sub" onclick="openSettings()">⚙ إعدادات ولي الأمر (الأقسام)</button>
+  </div>
+  <div id="content"><div class="loading">جارِ التحميل...</div></div>
+</div>
+
+<div class="modal-bg" id="addChildModal">
+  <div class="modal">
+    <h3>إضافة ابن/ابنة جديد</h3>
+    <input id="newChildName" placeholder="الاسم">
+    <select id="newChildAvatar">
+      <option value="👦">👦 ولد</option>
+      <option value="👧">👧 بنت</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('addChildModal')">إلغاء</button>
+      <button class="btn btn-add" onclick="addChild()">إضافة</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="logModal">
+  <div class="modal">
+    <h3 id="logModalTitle">تسجيل إنجاز</h3>
+    <select id="logPoints">
+      <option value="1">إنجاز بسيط (+1)</option>
+      <option value="2" selected>إنجاز جيد (+2)</option>
+      <option value="3">إنجاز ممتاز (+3)</option>
+      <option value="5">إنجاز استثنائي (+5)</option>
+    </select>
+    <input id="logNote" placeholder="ملاحظة (اختياري) مثل: حفظ صفحة من سورة البقرة">
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('logModal')">إلغاء</button>
+      <button class="btn btn-add" onclick="submitLog()">تسجيل ✓</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="settingsModal">
+  <div class="modal" style="width:min(420px,92vw);">
+    <h3>⚙ إعدادات ولي الأمر — الأقسام</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+      تقدر تغيّر اسم/أيقونة أي قسم، تحذف قسم ما عاد يلزم، أو تضيف قسم جديد (مثلاً: حفظ متن، رياضة، صلاة بالمسجد).
+    </div>
+    <div id="settingsCatList"></div>
+    <div style="display:flex;gap:6px;align-items:center;margin-top:12px;border-top:1px dashed var(--border);padding-top:12px;">
+      <input id="newCatIcon" placeholder="🔤" maxlength="4" style="width:46px;text-align:center;margin-bottom:0;">
+      <input id="newCatName" placeholder="اسم قسم جديد" style="flex:1;margin-bottom:0;">
+      <button class="btn btn-add" style="padding:8px 12px;" onclick="addCategory()">+ إضافة</button>
+    </div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-cancel" onclick="closeModal('settingsModal')">تم</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="goalSettingsModal">
+  <div class="modal">
+    <h3>🎯 ضبط الهدف</h3>
+    <select id="goalTypeSelect" onchange="toggleGoalCustomFields()">
+      <option value="week">أسبوعي (يتجدد كل 7 أيام)</option>
+      <option value="month">شهري (مناسب للإجازة)</option>
+      <option value="custom">مخصص — تحديد تاريخ يدوي</option>
+    </select>
+    <div id="goalCustomFields" style="display:none;">
+      <label style="font-size:12px;color:var(--muted);">من تاريخ</label>
+      <input type="date" id="goalCustomFrom">
+      <label style="font-size:12px;color:var(--muted);">إلى تاريخ</label>
+      <input type="date" id="goalCustomTo">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('goalSettingsModal')">إلغاء</button>
+      <button class="btn btn-add" onclick="saveGoalSettings()">حفظ ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let CATS = [
+  {key:'quran', name:'حفظ القرآن',     icon:'🕌', color:'var(--green)'},
+  {key:'read',  name:'القراءة',        icon:'📖', color:'var(--blue)'},
+  {key:'write', name:'الكتابة',        icon:'✍️', color:'var(--purple)'},
+  {key:'skill', name:'تطوير المهارات', icon:'🛠️', color:'var(--gold)'},
+];
+const CAT_COLOR_CYCLE = ['var(--blue)','var(--purple)','var(--green)','var(--gold)','var(--pink)'];
+const LEVEL_STEP = 20; // points per level
+const GOAL_DAYS = { week: 7, month: 30 };
+const GOAL_LABELS = { week: 'أسبوع', month: 'شهر', custom: 'مخصص' };
+const ENCOURAGE_URGENT = [
+  '⏰ بدأ العد التنازلي! الوقت يمشي بسرعة، سرّع الإنجاز',
+  '🔥 الهدف قاب قوسين أو أدنى... لا تستسلم الآن!',
+  '⌛ الأيام المتبقية قليلة، كل إنجاز يحسب الآن أكثر من أي وقت'
+];
+const ENCOURAGE_NEGLECT = [
+  '⚠️ لا تهمل إنجازك! خلك مستمر حتى لو بإنجاز بسيط',
+  '🌱 العقل يحتاج تغذية يومية، رجّع للمسار',
+  '👀 وين الإنجاز اليوم؟ خطوة وحدة كافية تكمل المسيرة'
+];
+const ENCOURAGE_OK = [
+  '🚀 استمر! أنت بالطريق الصحيح نحو الهدف',
+  '💪 كل يوم تضيف فيه نقطة، أنت أقرب للنجمة الثالثة',
+  '🌟 تقدم رائع، خلك على نفس الوتيرة'
+];
+
+let state = { children: [], activeId: null, categories: null };
+let pendingLog = null;
+let saveTimer = null;
+let pendingGoalType = 'week';
+
+function uid(){ return 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+function catKeyFromName(name){
+  return 'k_' + name.replace(/\s+/g,'').slice(0,6) + '_' + Math.random().toString(36).slice(2,5);
+}
+
+function ensureChildDefaults(child){
+  if(!child.goalPeriod) child.goalPeriod = 'week';
+  if(!child.goalStart) child.goalStart = todayStr();
+  if(!child.goalHistory) child.goalHistory = [];
+  if(!child.streakDays) child.streakDays = [];
+  CATS.forEach(c=>{
+    if(!child.cats[c.key]) child.cats[c.key] = {points:0, logs:[]};
+    if(!child.cats[c.key].logs) child.cats[c.key].logs = [];
+  });
+  return child;
+}
+
+async function loadState(){
+  try{
+    const r = await window.storage.get('mindbuilder:state');
+    if(r && r.value){ state = JSON.parse(r.value); }
+  }catch(e){ /* no saved state yet */ }
+  if(!state.children || state.children.length===0){
+    // seed with one example child to make it inviting
+    state.children = [];
+    state.activeId = null;
+  }
+  if(state.categories && state.categories.length){
+    CATS = state.categories;
+  } else {
+    state.categories = CATS;
+  }
+  state.children.forEach(ensureChildDefaults);
+  if(state.children.length && !state.activeId){
+    state.activeId = state.children[0].id;
+  }
+  render();
+}
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    try{ await window.storage.set('mindbuilder:state', JSON.stringify(state)); }
+    catch(e){ console.error('save failed', e); }
+  }, 250);
+}
+
+function newChildData(name, avatar){
+  const cats = {};
+  CATS.forEach(c=> cats[c.key] = {points:0, logs:[]});
+  return { id: uid(), name, avatar, cats, streakDays: [], goalPeriod:'week', goalStart: todayStr(), goalHistory: [] };
+}
+
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+function addChild(){
+  const name = document.getElementById('newChildName').value.trim();
+  const avatar = document.getElementById('newChildAvatar').value;
+  if(!name){ showToast('الرجاء كتابة الاسم'); return; }
+  const child = newChildData(name, avatar);
+  state.children.push(child);
+  state.activeId = child.id;
+  document.getElementById('newChildName').value='';
+  closeModal('addChildModal');
+  scheduleSave();
+  render();
+}
+
+function getActive(){
+  return state.children.find(c=>c.id===state.activeId);
+}
+
+function levelInfo(points){
+  const level = Math.floor(points / LEVEL_STEP) + 1;
+  const into = points % LEVEL_STEP;
+  const pct = Math.round((into/LEVEL_STEP)*100);
+  return {level, pct, into};
+}
+
+function totalPoints(child){
+  return CATS.reduce((s,c)=> s + ((child.cats[c.key]||{}).points||0), 0);
+}
+
+function todayStr(){
+  return new Date().toISOString().slice(0,10);
+}
+
+function logAchievement(catKey){
+  pendingLog = catKey;
+  const cat = CATS.find(c=>c.key===catKey);
+  document.getElementById('logModalTitle').textContent = 'تسجيل إنجاز - ' + cat.name;
+  document.getElementById('logNote').value='';
+  openModal('logModal');
+}
+
+function submitLog(){
+  const child = getActive();
+  if(!child || !pendingLog) return;
+  const pts = parseInt(document.getElementById('logPoints').value,10);
+  const note = document.getElementById('logNote').value.trim();
+  const entry = { date: todayStr(), time: new Date().toLocaleTimeString('ar-BH',{hour:'2-digit',minute:'2-digit'}), points: pts, note };
+  child.cats[pendingLog].points += pts;
+  child.cats[pendingLog].logs.unshift(entry);
+  child.cats[pendingLog].logs = child.cats[pendingLog].logs.slice(0,30);
+  if(!child.streakDays.includes(todayStr())) child.streakDays.push(todayStr());
+  closeModal('logModal');
+  scheduleSave();
+  showToast('🎉 أحسنت! تم تسجيل الإنجاز (+' + pts + ' نقطة)');
+  render();
+}
+
+function removePoint(catKey){
+  const child = getActive();
+  if(!child) return;
+  if(child.cats[catKey].points>0){
+    child.cats[catKey].points -= 1;
+    scheduleSave();
+    render();
+  }
+}
+
+function renderSettingsModal(){
+  const box = document.getElementById('settingsCatList');
+  box.innerHTML = CATS.map((c,i)=>`
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+      <input value="${c.icon}" maxlength="4" style="width:46px;text-align:center;margin-bottom:0;" onchange="updateCatField('${c.key}','icon',this.value)">
+      <input value="${c.name}" style="flex:1;margin-bottom:0;" onchange="updateCatField('${c.key}','name',this.value)">
+      <button class="btn btn-sub" style="padding:6px 10px;" onclick="deleteCategory('${c.key}')" title="حذف القسم" ${CATS.length<=1?'disabled':''}>🗑️</button>
+    </div>`).join('');
+}
+
+function openSettings(){
+  renderSettingsModal();
+  document.getElementById('newCatName').value='';
+  document.getElementById('newCatIcon').value='';
+  openModal('settingsModal');
+}
+
+function updateCatField(key, field, value){
+  const cat = CATS.find(c=>c.key===key);
+  if(!cat) return;
+  cat[field] = value.trim() || cat[field];
+  state.categories = CATS;
+  scheduleSave();
+}
+
+function addCategory(){
+  const name = document.getElementById('newCatName').value.trim();
+  let icon = document.getElementById('newCatIcon').value.trim();
+  if(!name){ showToast('اكتب اسم القسم الجديد'); return; }
+  if(!icon) icon = '⭐';
+  const key = catKeyFromName(name);
+  const color = CAT_COLOR_CYCLE[CATS.length % CAT_COLOR_CYCLE.length];
+  CATS.push({key, name, icon, color});
+  state.categories = CATS;
+  state.children.forEach(ch=>{ if(!ch.cats[key]) ch.cats[key] = {points:0, logs:[]}; });
+  document.getElementById('newCatName').value='';
+  document.getElementById('newCatIcon').value='';
+  scheduleSave();
+  renderSettingsModal();
+  render();
+  showToast('✅ تمت إضافة القسم: ' + name);
+}
+
+function deleteCategory(key){
+  if(CATS.length<=1){ showToast('لازم يبقى قسم واحد على الأقل'); return; }
+  if(!confirm('حذف هذا القسم سيخفيه من الواجهة (تبقى بياناته القديمة محفوظة). متأكد؟')) return;
+  CATS = CATS.filter(c=>c.key!==key);
+  state.categories = CATS;
+  scheduleSave();
+  renderSettingsModal();
+  render();
+}
+
+function toggleGoalCustomFields(){
+  const type = document.getElementById('goalTypeSelect').value;
+  document.getElementById('goalCustomFields').style.display = (type==='custom') ? 'block' : 'none';
+}
+
+function openGoalSettings(){
+  const child = getActive();
+  if(!child) return;
+  document.getElementById('goalTypeSelect').value = child.goalPeriod;
+  document.getElementById('goalCustomFrom').value = child.goalStart || todayStr();
+  document.getElementById('goalCustomTo').value = child.goalCustomEnd || todayStr();
+  toggleGoalCustomFields();
+  openModal('goalSettingsModal');
+}
+
+function saveGoalSettings(){
+  const child = getActive();
+  if(!child) return;
+  const type = document.getElementById('goalTypeSelect').value;
+  if(type==='custom'){
+    const from = document.getElementById('goalCustomFrom').value;
+    const to = document.getElementById('goalCustomTo').value;
+    if(!from || !to || to <= from){ showToast('حدد تاريخ بداية ونهاية صحيحين'); return; }
+    child.goalPeriod = 'custom';
+    child.goalStart = from;
+    child.goalCustomEnd = to;
+  } else {
+    child.goalPeriod = type;
+    child.goalStart = todayStr();
+  }
+  closeModal('goalSettingsModal');
+  scheduleSave();
+  render();
+  showToast('🎯 تم ضبط الهدف');
+}
+
+function calcStreak(child){
+  // consecutive days up to today
+  const set = new Set(child.streakDays);
+  let streak=0;
+  let d = new Date();
+  while(true){
+    const key = d.toISOString().slice(0,10);
+    if(set.has(key)){ streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+
+function periodDaysFor(child){
+  if(child.goalPeriod === 'custom'){
+    const start = new Date(child.goalStart);
+    const end = new Date(child.goalCustomEnd);
+    return Math.max(1, daysBetween(start, end));
+  }
+  return GOAL_DAYS[child.goalPeriod] || 7;
+}
+
+function goalEndDate(child){
+  if(child.goalPeriod === 'custom' && child.goalCustomEnd){
+    return new Date(child.goalCustomEnd);
+  }
+  const start = new Date(child.goalStart);
+  const days = GOAL_DAYS[child.goalPeriod] || 7;
+  const end = new Date(start);
+  end.setDate(end.getDate() + days);
+  return end;
+}
+
+function daysBetween(a,b){
+  return Math.ceil((b - a) / (1000*60*60*24));
+}
+
+function pointsInRange(child, startStr, endStr){
+  const byCat = {};
+  let total = 0;
+  CATS.forEach(c=>{
+    let sum = 0;
+    ((child.cats[c.key]||{}).logs||[]).forEach(l=>{
+      if(l.date >= startStr && l.date < endStr) sum += l.points;
+    });
+    byCat[c.key] = sum;
+    total += sum;
+  });
+  return {total, byCat};
+}
+
+function starsForProgress(total, periodDays){
+  // target ~2 points/day average for full marks
+  const target = periodDays * 2;
+  const pct = target>0 ? total/target : 0;
+  if(pct >= 1) return 3;
+  if(pct >= 0.6) return 2;
+  if(pct >= 0.3) return 1;
+  return 0;
+}
+
+function evaluateAndRollGoal(child){
+  const today = new Date();
+  let end = goalEndDate(child);
+  let changed = false;
+  let guard = 0;
+  while(today >= end && guard < 24){
+    guard++;
+    const startStr = child.goalStart;
+    const endStr = end.toISOString().slice(0,10);
+    const {total, byCat} = pointsInRange(child, startStr, endStr);
+    const periodDays = periodDaysFor(child);
+    const stars = starsForProgress(total, periodDays);
+    child.goalHistory.unshift({
+      period: child.goalPeriod, start: startStr, end: endStr,
+      total, byCat, stars
+    });
+    child.goalHistory = child.goalHistory.slice(0,12);
+    child.goalStart = endStr;
+    if(child.goalPeriod === 'custom'){
+      child.goalPeriod = 'week'; // after a custom/vacation goal ends, return to weekly tracking
+      delete child.goalCustomEnd;
+    }
+    end = goalEndDate(child);
+    changed = true;
+  }
+  return changed;
+}
+
+function goalBanner(child){
+  const today = new Date();
+  const end = goalEndDate(child);
+  const daysLeft = Math.max(0, daysBetween(today, end));
+  const periodDays = periodDaysFor(child);
+  // last activity gap (any category)
+  let lastDate = null;
+  CATS.forEach(c=> (child.cats[c.key].logs||[]).forEach(l=>{ if(!lastDate || l.date > lastDate) lastDate = l.date; }));
+  let gapDays = 99;
+  if(lastDate){ gapDays = Math.floor((today - new Date(lastDate)) / (1000*60*60*24)); }
+
+  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+
+  if(gapDays >= 2){
+    return {cls:'urgent', text: pick(ENCOURAGE_NEGLECT)};
+  }
+  if(daysLeft <= Math.max(1, Math.round(periodDays*0.25))){
+    return {cls:'urgent', text: pick(ENCOURAGE_URGENT) + ` — باقي ${daysLeft} ${daysLeft===1?'يوم':'أيام'}`};
+  }
+  if(daysLeft <= Math.round(periodDays*0.5)){
+    return {cls:'warn', text: pick(ENCOURAGE_URGENT) + ` — باقي ${daysLeft} أيام`};
+  }
+  return {cls:'calm', text: pick(ENCOURAGE_OK) + ` — باقي ${daysLeft} ${daysLeft===1?'يوم':'أيام'} على نهاية الهدف`};
+}
+
+const BADGES = [
+  {id:'starter', name:'الانطلاقة', icon:'🌱', test: c=> totalPoints(c) >= 10},
+  {id:'reader', name:'نجم القراءة', icon:'📚', test: c=> (c.cats.read?.points||0) >= 30},
+  {id:'writer', name:'يد ذهبية', icon:'🖋️', test: c=> (c.cats.write?.points||0) >= 30},
+  {id:'hafiz', name:'حافظ مجتهد', icon:'🕋', test: c=> (c.cats.quran?.points||0) >= 30},
+  {id:'allrounder', name:'العقل الشامل', icon:'🌟', test: c=> CATS.every(cat=> (c.cats[cat.key]?.points||0)>=20)},
+  {id:'streak7', name:'أسبوع الإصرار', icon:'🔥', test: c=> calcStreak(c) >= 7},
+  {id:'century', name:'فارس المئة', icon:'🏆', test: c=> totalPoints(c) >= 100},
+];
+
+function brainSVG(pct, uidStr, color){
+  pct = Math.max(0, Math.min(100, pct));
+  const fillY = 100 - pct; // svg viewBox 0..100 height
+  const brainPath = "M50 6 C30 6 16 18 14 34 C8 36 4 44 6 52 C2 58 4 68 12 72 C12 84 24 94 38 94 L62 94 C76 94 88 84 88 72 C96 68 98 58 94 52 C96 44 92 36 86 34 C84 18 70 6 50 6 Z";
+  return `
+  <svg viewBox="0 0 100 100">
+    <defs>
+      <clipPath id="clip-${uidStr}">
+        <path d="${brainPath}"/>
+      </clipPath>
+      <linearGradient id="grad-${uidStr}" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0.55"/>
+      </linearGradient>
+    </defs>
+    <path d="${brainPath}" fill="#0d1730" stroke="#2a3a5c" stroke-width="2"/>
+    <g clip-path="url(#clip-${uidStr})">
+      <rect x="0" y="${fillY}" width="100" height="${pct}" fill="url(#grad-${uidStr})">
+        <animate attributeName="y" from="100" to="${fillY}" dur="0.8s" fill="freeze"/>
+        <animate attributeName="height" from="0" to="${pct}" dur="0.8s" fill="freeze"/>
+      </rect>
+      <path d="M16 34 Q26 30 36 34 M64 34 Q74 30 84 34" stroke="#0d1730" stroke-width="2" fill="none" opacity="0.5"/>
+    </g>
+    <path d="${brainPath}" fill="none" stroke="#3a4d75" stroke-width="1.5"/>
+  </svg>`;
+}
+
+function speedoSVG(pct, uidStr, color){
+  pct = Math.max(0, Math.min(100, pct));
+  const angle = -90 + (pct/100)*180; // -90..90 degrees
+  const arcLen = Math.PI*52; // half circle length
+  const dashOffset = arcLen * (1 - pct/100);
+  const cx=65, cy=68;
+  return `
+  <svg viewBox="0 0 130 78">
+    <path d="M13 68 A52 52 0 0 1 117 68" fill="none" stroke="#e4e8f3" stroke-width="10" stroke-linecap="round"/>
+    <path d="M13 68 A52 52 0 0 1 117 68" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
+          stroke-dasharray="${arcLen}" stroke-dashoffset="${arcLen}">
+      <animate attributeName="stroke-dashoffset" from="${arcLen}" to="${dashOffset}" dur="0.8s" fill="freeze"/>
+    </path>
+    <g>
+      <!-- needle as a clear tapered arrow pointing outward from hub -->
+      <polygon points="${cx-3},${cy} ${cx+3},${cy} ${cx},${cy-46}" fill="var(--needle)" stroke="#ffffff" stroke-width="0.6">
+        <animateTransform attributeName="transform" type="rotate" from="-90 ${cx} ${cy}" to="${angle} ${cx} ${cy}" dur="0.8s" fill="freeze"/>
+      </polygon>
+      <polygon points="${cx-1.2},${cy-30} ${cx+1.2},${cy-30} ${cx},${cy-46}" fill="#ffffff" opacity="0.55">
+        <animateTransform attributeName="transform" type="rotate" from="-90 ${cx} ${cy}" to="${angle} ${cx} ${cy}" dur="0.8s" fill="freeze"/>
+      </polygon>
+    </g>
+    <circle cx="${cx}" cy="${cy}" r="6.5" fill="var(--needle)" stroke="#ffffff" stroke-width="1.5"/>
+  </svg>`;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+function render(){
+  renderTabs();
+  const content = document.getElementById('content');
+  const child = getActive();
+  if(!child){
+    content.innerHTML = `<div class="panel empty">لا يوجد أبناء مضافين بعد.<br><br>
+      <button class="btn btn-add" onclick="openModal('addChildModal')">➕ إضافة أول طفل</button></div>`;
+    return;
+  }
+  const tp = totalPoints(child);
+  const lvl = levelInfo(tp);
+  const streak = calcStreak(child);
+  const overallPct = Math.min(100, Math.round((tp/200)*100));
+  const brainHtml = brainSVG(overallPct, 'b'+child.id, 'var(--green)');
+  const speedoHtml = speedoSVG(lvl.pct, 's'+child.id, 'var(--gold)');
+
+  const rolled = (()=>{ try{ return evaluateAndRollGoal(child); }catch(e){ console.error('goal roll error', e); return false; } })();
+  if(rolled){
+    scheduleSave();
+    const last = child.goalHistory[0];
+    const starsTxt = '⭐'.repeat(last.stars) + '☆'.repeat(3-last.stars);
+    showToast(`🏁 انتهى هدف ${GOAL_LABELS[last.period]}! النتيجة: ${starsTxt} (${last.total} نقطة) — بدأ هدف جديد`);
+  }
+  const periodDays = periodDaysFor(child);
+  const goalStartStr = child.goalStart;
+  const goalEndStr = goalEndDate(child).toISOString().slice(0,10);
+  const goalProgress = pointsInRange(child, goalStartStr, goalEndStr);
+  const goalTarget = periodDays*2;
+  const goalPct = Math.min(100, Math.round((goalProgress.total/goalTarget)*100));
+  const banner = goalBanner(child);
+  const elapsedDays = Math.max(0, periodDays - Math.max(0,daysBetween(new Date(), goalEndDate(child))));
+
+  let catsHtml = CATS.map(c=>{
+    const data = child.cats[c.key] || {points:0, logs:[]};
+    const li = levelInfo(data.points);
+    const lastLog = data.logs[0];
+    return `
+      <div class="cat">
+        <div class="cat-head">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="cat-icon">${c.icon}</span>
+            <span class="cat-name">${c.name}</span>
+          </div>
+          <span class="cat-level">مستوى ${li.level}</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${li.pct}%;background:${c.color};"></div></div>
+        <div class="cat-foot">
+          <span>${data.points} نقطة${lastLog? ' · آخر: '+lastLog.date : ''}</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sub" onclick="removePoint('${c.key}')" title="تراجع">−</button>
+            <button class="btn btn-add" onclick="logAchievement('${c.key}')">+ تسجيل إنجاز</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  let badgesHtml = BADGES.map(b=>{
+    const unlocked = b.test(child);
+    return `<div class="badge ${unlocked?'unlocked':''}">${b.icon} ${b.name}</div>`;
+  }).join('');
+
+  // recent activity across all cats
+  let allLogs = [];
+  CATS.forEach(c=> (child.cats[c.key]?.logs||[]).forEach(l=> allLogs.push({...l, cat:c.name, icon:c.icon})));
+  allLogs.sort((a,b)=> (b.date+b.time).localeCompare(a.date+a.time));
+  allLogs = allLogs.slice(0,8);
+  let logsHtml = allLogs.length ? allLogs.map(l=>
+    `<div class="log-row"><span>${l.icon}</span><span style="color:var(--text);font-weight:bold;">${l.cat}</span>
+     <span>+${l.points}</span><span>${l.note||''}</span><span style="margin-right:auto;">${l.date}</span></div>`
+  ).join('') : `<div class="log-row">لا يوجد نشاط مسجل بعد — ابدأ أول إنجاز اليوم!</div>`;
+
+  content.innerHTML = `
+    <div class="panel">
+      <div class="summary-row">
+        <div class="ring-box">
+          <div style="font-size:40px;">${child.avatar}</div>
+          <div>
+            <div style="font-size:18px;font-weight:bold;">${child.name}</div>
+            <div class="ring-label">المستوى العام: <span style="color:var(--gold);font-weight:bold;">${lvl.level}</span> — إجمالي ${tp} نقطة</div>
+          </div>
+        </div>
+        <div class="gauge-wrap">
+          <div class="brain-box" title="امتلاء العقل">${brainHtml}<div class="brain-pct">${overallPct}%</div></div>
+          <div class="speedo-box" title="سرعة التقدم للمستوى القادم">${speedoHtml}<div class="speedo-label">${lvl.pct}%</div></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <div class="stat-pill"><div class="v">🔥 ${streak}</div><div class="l">أيام متتالية</div></div>
+          <div class="stat-pill"><div class="v">${BADGES.filter(b=>b.test(child)).length}/${BADGES.length}</div><div class="l">أوسمة</div></div>
+          <div class="stat-pill"><div class="v">${tp}</div><div class="l">مجموع النقاط</div></div>
+        </div>
+      </div>
+      <div class="goal-box">
+        <div class="goal-head">
+          <div class="goal-title">🎯 هدف الـ${GOAL_LABELS[child.goalPeriod]} الحالي — يوم ${elapsedDays} من ${periodDays}${child.goalPeriod==='custom'?` (${child.goalStart} → ${child.goalCustomEnd})`:''}</div>
+          <button class="btn btn-sub" style="padding:6px 12px;" onclick="openGoalSettings()">⚙ تعديل الهدف</button>
+        </div>
+        <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${goalPct}%;"></div></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;">${goalProgress.total} / ${goalTarget} نقطة تقريبية لتحقيق الهدف بالكامل (⭐⭐⭐)</div>
+        <div class="goal-banner ${banner.cls}">${banner.text}</div>
+        ${child.goalHistory.length ? `
+        <div class="goal-history">
+          <div style="font-weight:bold;color:var(--text);margin-bottom:4px;">📜 سجل الأهداف السابقة</div>
+          ${child.goalHistory.slice(0,5).map(h=>
+            `<div class="goal-history-row"><span>${GOAL_LABELS[h.period]} (${h.start} → ${h.end})</span><span>${'⭐'.repeat(h.stars)}${'☆'.repeat(3-h.stars)} · ${h.total} نقطة</span></div>`
+          ).join('')}
+        </div>` : ''}
+      </div>
+      <div class="cats">${catsHtml}</div>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-top:0;color:var(--gold);">🏅 الأوسمة</h3>
+      <div class="badges">${badgesHtml}</div>
+    </div>
+
+    <div class="panel log-section">
+      <h3>📋 آخر الإنجازات</h3>
+      ${logsHtml}
+    </div>
+  `;
+}
+
+function renderTabs(){
+  const tabs = document.getElementById('childTabs');
+  let html = state.children.map(c=>
+    `<div class="child-tab ${c.id===state.activeId?'active':''}" onclick="selectChild('${c.id}')">
+       <span class="avatar">${c.avatar}</span> ${c.name}
+     </div>`
+  ).join('');
+  html += `<div class="add-child" onclick="openModal('addChildModal')">➕ إضافة طفل</div>`;
+  tabs.innerHTML = html;
+}
+
+function selectChild(id){
+  state.activeId = id;
+  scheduleSave();
+  render();
+}
+
+loadState();
+</script>
+</body>
+</html>
