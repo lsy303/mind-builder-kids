@@ -267,6 +267,28 @@ function catKeyFromName(name){
   return 'k_' + name.replace(/\s+/g,'').slice(0,6) + '_' + Math.random().toString(36).slice(2,5);
 }
 
+// Storage adapter: uses Claude's window.storage when available (e.g. inside claude.ai),
+// otherwise falls back to the browser's localStorage automatically (e.g. on GitHub Pages).
+const appStorage = (function(){
+  const hasClaudeStorage = (typeof window !== 'undefined') && window.storage && typeof window.storage.get === 'function';
+  if(hasClaudeStorage){
+    return {
+      get: (key)=> window.storage.get(key),
+      set: (key, value)=> window.storage.set(key, value)
+    };
+  }
+  return {
+    get: async (key)=>{
+      const v = localStorage.getItem(key);
+      return v===null ? null : { key, value: v };
+    },
+    set: async (key, value)=>{
+      localStorage.setItem(key, value);
+      return { key, value };
+    }
+  };
+})();
+
 function ensureChildDefaults(child){
   if(!child.goalPeriod) child.goalPeriod = 'week';
   if(!child.goalStart) child.goalStart = todayStr();
@@ -281,7 +303,7 @@ function ensureChildDefaults(child){
 
 async function loadState(){
   try{
-    const r = await window.storage.get('mindbuilder:state');
+    const r = await appStorage.get('mindbuilder:state');
     if(r && r.value){ state = JSON.parse(r.value); }
   }catch(e){ /* no saved state yet */ }
   if(!state.children || state.children.length===0){
@@ -304,7 +326,7 @@ async function loadState(){
 function scheduleSave(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async ()=>{
-    try{ await window.storage.set('mindbuilder:state', JSON.stringify(state)); }
+    try{ await appStorage.set('mindbuilder:state', JSON.stringify(state)); }
     catch(e){ console.error('save failed', e); }
   }, 250);
 }
