@@ -124,7 +124,11 @@
 
   .gauge-wrap{display:flex; align-items:center; gap:18px; flex-wrap:wrap;}
   .brain-box{position:relative; width:96px; height:96px; flex:none;}
-  .brain-box svg{width:100%; height:100%; display:block;}
+  .brain-emoji-base, .brain-emoji-fill{
+    position:absolute; inset:0; font-size:64px; line-height:96px; text-align:center;
+  }
+  .brain-emoji-base{ filter:grayscale(1) brightness(0); opacity:0.88; }
+  .brain-emoji-fill{ transition:clip-path .8s ease; filter:saturate(1.3); }
   .brain-pct{
     position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
     font-size:12px; font-weight:bold; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5);
@@ -737,7 +741,7 @@ const BADGES = [
   {id:'century', name:'فارس المئة', icon:'🏆', test: c=> totalPoints(c) >= 100},
 ];
 
-const BRAIN_PATH = "M82 48 Q84.06 49.48 86.98 52.62 Q87.84 54.27 84.33 58.22 Q82.31 59.22 75.77 61 Q73.11 62.61 71.7 69.03 Q70.59 72.83 67.9 75.41 Q63.77 75.83 59.11 74.18 Q54.89 71.53 51.49 69.41 Q48.58 68.92 45.44 70.11 Q39.66 72.83 37.68 72.94 Q32.92 71.08 31.98 65.5 Q32.17 60.52 31.41 59.74 Q26.92 58.39 19.39 57.09 Q14.54 53.88 16.57 49.43 Q21.22 45.64 22.04 44.57 Q19.77 41.18 17.62 37.29 Q20.27 34.43 27.8 34.19 Q35.08 34.9 36.68 34.77 Q40.57 33.28 44.57 30.37 Q50 28.99 55.12 31.29 Q58.34 34.98 59.13 35.84 Q66.13 36.74 73.1 36.34 Q77.81 37.76 75.34 43.03 Q74.76 43.9 79.77 46.87 Z";
+const BRAIN_PATH = "M50 14 C38 14 30 20 28 28 C18 27 11 34 12 43 C6 46 4 54 9 60 C7 67 11 74 19 76 C20 84 28 90 37 90 L41 90 L41 82 C36 80 33 75 33 70 C38 73 45 74 50 73 C55 74 62 73 67 70 C67 75 64 80 59 82 L59 90 L63 90 C72 90 80 84 81 76 C89 74 93 67 91 60 C96 54 94 46 88 43 C89 34 82 27 72 28 C70 20 62 14 50 14 Z";
 
 function brainSVG(pct, uidStr, color){
   pct = Math.max(0, Math.min(100, pct));
@@ -751,19 +755,19 @@ function brainSVG(pct, uidStr, color){
         <stop offset="100%" stop-color="${color}" stop-opacity="0.55"/>
       </linearGradient>
     </defs>
-    <path d="${BRAIN_PATH}" fill="#0d1730" stroke="#2a3a5c" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="${BRAIN_PATH}" fill="#111418" stroke="#111418" stroke-width="2" stroke-linejoin="round"/>
     <g clip-path="url(#clip-${uidStr})">
       <rect x="0" y="${fillY}" width="100" height="${pct}" fill="url(#grad-${uidStr})">
         <animate attributeName="y" from="100" to="${fillY}" dur="0.8s" fill="freeze"/>
         <animate attributeName="height" from="0" to="${pct}" dur="0.8s" fill="freeze"/>
       </rect>
       <!-- center hemisphere divider -->
-      <line x1="50" y1="30" x2="50" y2="73" stroke="#0d1730" stroke-width="1.6" opacity="0.5"/>
+      <line x1="50" y1="16" x2="50" y2="73" stroke="#111418" stroke-width="1.6" opacity="0.55"/>
       <!-- gyri / fold details -->
-      <path d="M22 40 Q30 35 38 39 M62 38 Q70 35 78 41 M30 58 Q38 54 46 58 M54 56 Q62 53 70 57"
-            stroke="#0d1730" stroke-width="1.4" fill="none" opacity="0.45" stroke-linecap="round"/>
+      <path d="M22 38 Q30 33 38 38 M62 36 Q70 32 78 38 M16 52 Q24 48 30 52 M70 50 Q76 47 84 52"
+            stroke="#111418" stroke-width="1.3" fill="none" opacity="0.5" stroke-linecap="round"/>
     </g>
-    <path d="${BRAIN_PATH}" fill="none" stroke="#3a4d75" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="${BRAIN_PATH}" fill="none" stroke="#000000" stroke-width="1.4" stroke-linejoin="round"/>
   </svg>`;
 }
 
@@ -813,7 +817,7 @@ function render(){
   const lvl = levelInfo(tp);
   const streak = calcStreak(child);
   const overallPct = Math.min(100, Math.round((tp/200)*100));
-  const brainHtml = brainSVG(overallPct, 'b'+child.id, 'var(--green)');
+  const brainFillInset = Math.max(0, 100 - overallPct);
   const speedoHtml = speedoSVG(lvl.pct, 's'+child.id, 'var(--gold)');
 
   const rolled = (()=>{ try{ return evaluateAndRollGoal(child); }catch(e){ console.error('goal roll error', e); return false; } })();
@@ -882,7 +886,11 @@ function render(){
           </div>
         </div>
         <div class="gauge-wrap">
-          <div class="brain-box" title="امتلاء العقل">${brainHtml}<div class="brain-pct">${overallPct}%</div></div>
+          <div class="brain-box" title="امتلاء العقل">
+            <div class="brain-emoji-base">🧠</div>
+            <div class="brain-emoji-fill" style="clip-path: inset(${brainFillInset}% 0 0 0);">🧠</div>
+            <div class="brain-pct">${overallPct}%</div>
+          </div>
           <div class="speedo-box" title="سرعة التقدم للمستوى القادم">${speedoHtml}<div class="speedo-label">${lvl.pct}%</div></div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
