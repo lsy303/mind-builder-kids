@@ -224,6 +224,30 @@
       <input id="newCatName" placeholder="اسم قسم جديد" style="flex:1;margin-bottom:0;">
       <button class="btn btn-add" style="padding:8px 12px;" onclick="addCategory()">+ إضافة</button>
     </div>
+
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+      <h3 style="margin:0 0 8px;font-size:15px;">🏅 الأوسمة — عدّل وأضف كما يناسبك</h3>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">غيّر شرط أي وسام، احذفه، أو أضف وسام جديد بالكامل بشرطك الخاص.</div>
+      <div id="badgesExplainList"></div>
+      <div style="border-top:1px dashed var(--border);margin-top:10px;padding-top:10px;">
+        <div style="font-size:12px;font-weight:bold;margin-bottom:6px;">➕ إضافة وسام جديد</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input id="newBadgeIcon" placeholder="🏅" maxlength="4" style="width:46px;text-align:center;margin-bottom:0;">
+          <input id="newBadgeName" placeholder="اسم الوسام" style="flex:1;margin-bottom:0;">
+        </div>
+        <select id="newBadgeType" onchange="toggleNewBadgeCatField()" style="margin-bottom:6px;">
+          <option value="total">مجموع نقاط إجمالي</option>
+          <option value="category">نقاط بقسم معيّن</option>
+          <option value="allcats">نقاط بكل قسم (الحد الأدنى)</option>
+          <option value="streak">أيام متتالية</option>
+        </select>
+        <div id="newBadgeCatWrap" style="display:none;">
+          <select id="newBadgeCat" style="margin-bottom:6px;"></select>
+        </div>
+        <input id="newBadgeValue" type="number" min="1" value="10" placeholder="الرقم المطلوب" style="margin-bottom:8px;">
+        <button class="btn btn-add" style="width:100%;" onclick="addBadge()">+ إضافة الوسام</button>
+      </div>
+    </div>
     <div class="modal-actions" style="margin-top:14px;">
       <button class="btn btn-cancel" onclick="closeModal('settingsModal')">تم</button>
     </div>
@@ -376,6 +400,11 @@ async function loadState(){
   } else {
     state.categories = CATS;
   }
+  if(state.badges && state.badges.length){
+    BADGES = state.badges;
+  } else {
+    state.badges = BADGES;
+  }
   state.children.forEach(ensureChildDefaults);
   if(state.children.length && !state.activeId){
     state.activeId = state.children[0].id;
@@ -476,11 +505,73 @@ function renderSettingsModal(){
     </div>`).join('');
 }
 
+function renderBadgesExplainList(){
+  document.getElementById('badgesExplainList').innerHTML = BADGES.map((b,i)=>`
+    <div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border);">
+      <input value="${b.icon}" maxlength="4" style="width:40px;text-align:center;margin-bottom:0;" onchange="updateBadgeField('${b.id}','icon',this.value)">
+      <div style="flex:1;">
+        <input value="${b.name}" style="margin-bottom:2px;" onchange="updateBadgeField('${b.id}','name',this.value)">
+        <div style="font-size:11px;color:var(--muted);">${badgeDesc(b)}</div>
+      </div>
+      <input type="number" value="${b.value}" min="1" style="width:60px;text-align:center;margin-bottom:0;" onchange="updateBadgeField('${b.id}','value',this.value)">
+      <button class="btn btn-sub" style="padding:6px 10px;" onclick="deleteBadge('${b.id}')" title="حذف الوسام">🗑️</button>
+    </div>`).join('');
+}
+
+function toggleNewBadgeCatField(){
+  const type = document.getElementById('newBadgeType').value;
+  document.getElementById('newBadgeCatWrap').style.display = (type==='category') ? 'block' : 'none';
+}
+
 function openSettings(){
   renderSettingsModal();
   document.getElementById('newCatName').value='';
   document.getElementById('newCatIcon').value='';
+  renderBadgesExplainList();
+  document.getElementById('newBadgeCat').innerHTML = CATS.map(c=>`<option value="${c.key}">${c.icon} ${c.name}</option>`).join('');
+  document.getElementById('newBadgeIcon').value='';
+  document.getElementById('newBadgeName').value='';
+  document.getElementById('newBadgeValue').value='10';
+  toggleNewBadgeCatField();
   openModal('settingsModal');
+}
+
+function updateBadgeField(id, field, value){
+  const b = BADGES.find(x=>x.id===id);
+  if(!b) return;
+  if(field==='value') b.value = Math.max(1, parseInt(value,10)||1);
+  else b[field] = value.trim() || b[field];
+  state.badges = BADGES;
+  scheduleSave();
+  renderBadgesExplainList();
+  render();
+}
+
+function addBadge(){
+  const name = document.getElementById('newBadgeName').value.trim();
+  let icon = document.getElementById('newBadgeIcon').value.trim() || '🏅';
+  const type = document.getElementById('newBadgeType').value;
+  const value = Math.max(1, parseInt(document.getElementById('newBadgeValue').value,10) || 10);
+  if(!name){ showToast('اكتب اسم الوسام'); return; }
+  const badge = { id: 'bdg_' + Date.now(), name, icon, type, value };
+  if(type==='category'){ badge.catKey = document.getElementById('newBadgeCat').value; }
+  BADGES.push(badge);
+  state.badges = BADGES;
+  scheduleSave();
+  renderBadgesExplainList();
+  document.getElementById('newBadgeName').value='';
+  document.getElementById('newBadgeIcon').value='';
+  render();
+  showToast('✅ تمت إضافة وسام: ' + name);
+}
+
+function deleteBadge(id){
+  if(!confirm('حذف هذا الوسام نهائياً من النظام؟')) return;
+  BADGES = BADGES.filter(b=>b.id!==id);
+  state.badges = BADGES;
+  scheduleSave();
+  renderBadgesExplainList();
+  render();
 }
 
 function updateCatField(key, field, value){
@@ -609,8 +700,9 @@ function archiveAndResetChild(){
 function wipeAllData(){
   if(!confirm('⚠️ تحذير: هذا سيحذف كل الأطفال، نقاطهم، أرشيفهم، والأقسام المخصصة نهائياً ولا يمكن التراجع عنه. متأكد إنك تبي تمسح كل شي؟')) return;
   if(!confirm('تأكيد أخير: هل أنت متأكد فعلاً من مسح جميع البيانات؟')) return;
-  state = { children: [], activeId: null, categories: JSON.parse(JSON.stringify(DEFAULT_CATS)) };
+  state = { children: [], activeId: null, categories: JSON.parse(JSON.stringify(DEFAULT_CATS)), badges: JSON.parse(JSON.stringify(DEFAULT_BADGES)) };
   CATS = state.categories;
+  BADGES = state.badges;
   closeModal('settingsModal');
   scheduleSave();
   render();
@@ -731,15 +823,36 @@ function goalBanner(child){
   return {cls:'calm', text: pick(ENCOURAGE_OK) + ` — باقي ${daysLeft} ${daysLeft===1?'يوم':'أيام'} على نهاية الهدف`};
 }
 
-const BADGES = [
-  {id:'starter', name:'الانطلاقة', icon:'🌱', test: c=> totalPoints(c) >= 10},
-  {id:'reader', name:'نجم القراءة', icon:'📚', test: c=> (c.cats.read?.points||0) >= 30},
-  {id:'writer', name:'يد ذهبية', icon:'🖋️', test: c=> (c.cats.write?.points||0) >= 30},
-  {id:'hafiz', name:'حافظ مجتهد', icon:'🕋', test: c=> (c.cats.quran?.points||0) >= 30},
-  {id:'allrounder', name:'العقل الشامل', icon:'🌟', test: c=> enabledCatsFor(c).every(cat=> (c.cats[cat.key]?.points||0)>=20)},
-  {id:'streak7', name:'أسبوع الإصرار', icon:'🔥', test: c=> calcStreak(c) >= 7},
-  {id:'century', name:'فارس المئة', icon:'🏆', test: c=> totalPoints(c) >= 100},
+const DEFAULT_BADGES = [
+  {id:'starter', name:'الانطلاقة', icon:'🌱', type:'total', value:10},
+  {id:'reader', name:'نجم القراءة', icon:'📚', type:'category', catKey:'read', value:30},
+  {id:'writer', name:'يد ذهبية', icon:'🖋️', type:'category', catKey:'write', value:30},
+  {id:'hafiz', name:'حافظ مجتهد', icon:'🕋', type:'category', catKey:'quran', value:30},
+  {id:'allrounder', name:'العقل الشامل', icon:'🌟', type:'allcats', value:20},
+  {id:'streak7', name:'أسبوع الإصرار', icon:'🔥', type:'streak', value:7},
+  {id:'century', name:'فارس المئة', icon:'🏆', type:'total', value:100},
 ];
+let BADGES = JSON.parse(JSON.stringify(DEFAULT_BADGES));
+const BADGE_TYPE_LABELS = { total:'مجموع نقاط إجمالي', category:'نقاط بقسم معيّن', allcats:'نقاط بكل قسم (الحد الأدنى)', streak:'أيام متتالية' };
+
+function badgeDesc(b){
+  if(b.type==='total') return `الوصول لـ ${b.value} نقطة إجمالي`;
+  if(b.type==='category'){
+    const cat = CATS.find(c=>c.key===b.catKey);
+    return `${b.value} نقطة بقسم "${cat?cat.name:'(محذوف)'}" تحديداً`;
+  }
+  if(b.type==='allcats') return `${b.value} نقطة على الأقل بكل قسم مفعّل`;
+  if(b.type==='streak') return `${b.value} أيام متتالية فيها إنجاز يومي`;
+  return '';
+}
+
+function testBadge(b, child){
+  if(b.type==='total') return totalPoints(child) >= b.value;
+  if(b.type==='category') return ((child.cats[b.catKey]||{}).points||0) >= b.value;
+  if(b.type==='allcats') return enabledCatsFor(child).every(cat=> (child.cats[cat.key]?.points||0) >= b.value);
+  if(b.type==='streak') return calcStreak(child) >= b.value;
+  return false;
+}
 
 const BRAIN_PATH = "M50 14 C38 14 30 20 28 28 C18 27 11 34 12 43 C6 46 4 54 9 60 C7 67 11 74 19 76 C20 84 28 90 37 90 L41 90 L41 82 C36 80 33 75 33 70 C38 73 45 74 50 73 C55 74 62 73 67 70 C67 75 64 80 59 82 L59 90 L63 90 C72 90 80 84 81 76 C89 74 93 67 91 60 C96 54 94 46 88 43 C89 34 82 27 72 28 C70 20 62 14 50 14 Z";
 
@@ -861,7 +974,7 @@ function render(){
   }).join('');
 
   let badgesHtml = BADGES.map(b=>{
-    const unlocked = b.test(child);
+    const unlocked = testBadge(b, child);
     return `<div class="badge ${unlocked?'unlocked':''}">${b.icon} ${b.name}</div>`;
   }).join('');
 
@@ -895,7 +1008,7 @@ function render(){
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <div class="stat-pill"><div class="v">🔥 ${streak}</div><div class="l">أيام متتالية</div></div>
-          <div class="stat-pill"><div class="v">${BADGES.filter(b=>b.test(child)).length}/${BADGES.length}</div><div class="l">أوسمة</div></div>
+          <div class="stat-pill"><div class="v">${BADGES.filter(b=>testBadge(b,child)).length}/${BADGES.length}</div><div class="l">أوسمة</div></div>
           <div class="stat-pill"><div class="v">${tp}</div><div class="l">مجموع النقاط</div></div>
         </div>
       </div>
