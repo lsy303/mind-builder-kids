@@ -737,30 +737,33 @@ const BADGES = [
   {id:'century', name:'فارس المئة', icon:'🏆', test: c=> totalPoints(c) >= 100},
 ];
 
+const BRAIN_PATH = "M82 48 Q84.06 49.48 86.98 52.62 Q87.84 54.27 84.33 58.22 Q82.31 59.22 75.77 61 Q73.11 62.61 71.7 69.03 Q70.59 72.83 67.9 75.41 Q63.77 75.83 59.11 74.18 Q54.89 71.53 51.49 69.41 Q48.58 68.92 45.44 70.11 Q39.66 72.83 37.68 72.94 Q32.92 71.08 31.98 65.5 Q32.17 60.52 31.41 59.74 Q26.92 58.39 19.39 57.09 Q14.54 53.88 16.57 49.43 Q21.22 45.64 22.04 44.57 Q19.77 41.18 17.62 37.29 Q20.27 34.43 27.8 34.19 Q35.08 34.9 36.68 34.77 Q40.57 33.28 44.57 30.37 Q50 28.99 55.12 31.29 Q58.34 34.98 59.13 35.84 Q66.13 36.74 73.1 36.34 Q77.81 37.76 75.34 43.03 Q74.76 43.9 79.77 46.87 Z";
+
 function brainSVG(pct, uidStr, color){
   pct = Math.max(0, Math.min(100, pct));
   const fillY = 100 - pct; // svg viewBox 0..100 height
-  const brainPath = "M50 6 C30 6 16 18 14 34 C8 36 4 44 6 52 C2 58 4 68 12 72 C12 84 24 94 38 94 L62 94 C76 94 88 84 88 72 C96 68 98 58 94 52 C96 44 92 36 86 34 C84 18 70 6 50 6 Z";
   return `
   <svg viewBox="0 0 100 100">
     <defs>
-      <clipPath id="clip-${uidStr}">
-        <path d="${brainPath}"/>
-      </clipPath>
+      <clipPath id="clip-${uidStr}"><path d="${BRAIN_PATH}"/></clipPath>
       <linearGradient id="grad-${uidStr}" x1="0" y1="1" x2="0" y2="0">
         <stop offset="0%" stop-color="${color}" stop-opacity="0.95"/>
         <stop offset="100%" stop-color="${color}" stop-opacity="0.55"/>
       </linearGradient>
     </defs>
-    <path d="${brainPath}" fill="#0d1730" stroke="#2a3a5c" stroke-width="2"/>
+    <path d="${BRAIN_PATH}" fill="#0d1730" stroke="#2a3a5c" stroke-width="2.2" stroke-linejoin="round"/>
     <g clip-path="url(#clip-${uidStr})">
       <rect x="0" y="${fillY}" width="100" height="${pct}" fill="url(#grad-${uidStr})">
         <animate attributeName="y" from="100" to="${fillY}" dur="0.8s" fill="freeze"/>
         <animate attributeName="height" from="0" to="${pct}" dur="0.8s" fill="freeze"/>
       </rect>
-      <path d="M16 34 Q26 30 36 34 M64 34 Q74 30 84 34" stroke="#0d1730" stroke-width="2" fill="none" opacity="0.5"/>
+      <!-- center hemisphere divider -->
+      <line x1="50" y1="30" x2="50" y2="73" stroke="#0d1730" stroke-width="1.6" opacity="0.5"/>
+      <!-- gyri / fold details -->
+      <path d="M22 40 Q30 35 38 39 M62 38 Q70 35 78 41 M30 58 Q38 54 46 58 M54 56 Q62 53 70 57"
+            stroke="#0d1730" stroke-width="1.4" fill="none" opacity="0.45" stroke-linecap="round"/>
     </g>
-    <path d="${brainPath}" fill="none" stroke="#3a4d75" stroke-width="1.5"/>
+    <path d="${BRAIN_PATH}" fill="none" stroke="#3a4d75" stroke-width="1.4" stroke-linejoin="round"/>
   </svg>`;
 }
 
