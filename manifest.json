@@ -1,0 +1,27 @@
+{
+  "name": "بنّاء العقل - متابعة تطور الأبناء",
+  "short_name": "بنّاء العقل",
+  "description": "مؤشر تفاعلي لمتابعة تطور الأبناء في القراءة والكتابة وحفظ القرآن وتطوير المهارات",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef1f8",
+  "theme_color": "#d68910",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
