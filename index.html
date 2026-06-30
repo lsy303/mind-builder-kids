@@ -223,6 +223,10 @@
     <div class="modal-actions" style="margin-top:14px;">
       <button class="btn btn-cancel" onclick="closeModal('settingsModal')">تم</button>
     </div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;color:#b91c1c;font-weight:bold;margin-bottom:8px;">⚠️ منطقة الخطر</div>
+      <button class="btn" style="background:#fde8e8;color:#b91c1c;width:100%;" onclick="wipeAllData()">🗑️ مسح جميع البيانات نهائياً (كل الأطفال والأقسام)</button>
+    </div>
   </div>
 </div>
 
@@ -268,6 +272,7 @@ let CATS = [
   {key:'write', name:'الكتابة',        icon:'✍️', color:'var(--purple)'},
   {key:'skill', name:'تطوير المهارات', icon:'🛠️', color:'var(--gold)'},
 ];
+const DEFAULT_CATS = JSON.parse(JSON.stringify(CATS));
 const CAT_COLOR_CYCLE = ['var(--blue)','var(--purple)','var(--green)','var(--gold)','var(--pink)'];
 const LEVEL_STEP = 20; // points per level
 const GOAL_DAYS = { week: 7, month: 30 };
@@ -341,6 +346,7 @@ function ensureChildDefaults(child){
   if(!child.goalHistory) child.goalHistory = [];
   if(!child.streakDays) child.streakDays = [];
   if(!child.enabledCats) child.enabledCats = CATS.map(c=>c.key);
+  if(!child.pointsArchive) child.pointsArchive = [];
   // keep enabledCats in sync: drop keys that no longer exist globally
   child.enabledCats = child.enabledCats.filter(k=> CATS.some(c=>c.key===k));
   if(!child.enabledCats.length) child.enabledCats = CATS.map(c=>c.key);
@@ -384,7 +390,7 @@ function scheduleSave(){
 function newChildData(name, avatar){
   const cats = {};
   CATS.forEach(c=> cats[c.key] = {points:0, logs:[]});
-  return { id: uid(), name, avatar, cats, streakDays: [], goalPeriod:'week', goalStart: todayStr(), goalHistory: [], enabledCats: CATS.map(c=>c.key) };
+  return { id: uid(), name, avatar, cats, streakDays: [], goalPeriod:'week', goalStart: todayStr(), goalHistory: [], enabledCats: CATS.map(c=>c.key), pointsArchive: [] };
 }
 
 function openModal(id){ document.getElementById(id).classList.add('show'); }
@@ -574,6 +580,37 @@ function saveChildCats(){
   scheduleSave();
   render();
   showToast('✅ تم تحديث أقسام ' + child.name);
+}
+
+function archiveAndResetChild(){
+  const child = getActive();
+  if(!child) return;
+  const tp = totalPoints(child);
+  if(!confirm(`سيتم حفظ نقاط ${child.name} الحالية (${tp} نقطة) بالأرشيف للمقارنة لاحقاً، ثم تصفير كل شي (النقاط، السجلات، الأيام المتتالية) للبدء من جديد. متأكد؟`)) return;
+  const snapshot = { date: todayStr(), total: tp, byCat: {} };
+  enabledCatsFor(child).forEach(c=>{
+    snapshot.byCat[c.key] = { name: c.name, icon: c.icon, points: (child.cats[c.key]||{}).points||0 };
+  });
+  child.pointsArchive = child.pointsArchive || [];
+  child.pointsArchive.unshift(snapshot);
+  child.pointsArchive = child.pointsArchive.slice(0,20);
+  CATS.forEach(c=>{ child.cats[c.key] = {points:0, logs:[]}; });
+  child.streakDays = [];
+  child.goalStart = todayStr();
+  scheduleSave();
+  render();
+  showToast('📦 تمت أرشفة نقاط ' + child.name + ' والبدء من جديد');
+}
+
+function wipeAllData(){
+  if(!confirm('⚠️ تحذير: هذا سيحذف كل الأطفال، نقاطهم، أرشيفهم، والأقسام المخصصة نهائياً ولا يمكن التراجع عنه. متأكد إنك تبي تمسح كل شي؟')) return;
+  if(!confirm('تأكيد أخير: هل أنت متأكد فعلاً من مسح جميع البيانات؟')) return;
+  state = { children: [], activeId: null, categories: JSON.parse(JSON.stringify(DEFAULT_CATS)) };
+  CATS = state.categories;
+  closeModal('settingsModal');
+  scheduleSave();
+  render();
+  showToast('🗑️ تم مسح جميع البيانات، التطبيق بوضعه الأصلي');
 }
 
 function calcStreak(child){
@@ -876,6 +913,27 @@ function render(){
     <div class="panel">
       <h3 style="margin-top:0;color:var(--gold);">🏅 الأوسمة</h3>
       <div class="badges">${badgesHtml}</div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <h3 style="margin:0;color:var(--gold);">📦 أرشيف النقاط</h3>
+        <button class="btn" style="background:#fde8e8;color:#b91c1c;" onclick="archiveAndResetChild()">🗑️ أرشفة النقاط الآن وبدء جديد</button>
+      </div>
+      ${child.pointsArchive && child.pointsArchive.length ? `
+      <div class="goal-history" style="margin-top:12px;">
+        ${child.pointsArchive.map(a=>{
+          const breakdown = Object.values(a.byCat).map(b=>`${b.icon} ${b.name}: ${b.points}`).join(' · ');
+          return `<div class="goal-history-row" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <div style="display:flex;justify-content:space-between;width:100%;font-weight:bold;color:var(--text);">
+              <span>📅 ${a.date}</span><span>${a.total} نقطة إجمالي</span>
+            </div>
+            <div style="font-size:11px;">${breakdown}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">قارن هذي الأرقام مع مجموع النقاط الحالي بالأعلى لتشوف مدى تطور ${child.name} بين كل أرشفة والثانية.</div>
+      ` : `<div style="font-size:12px;color:var(--muted);margin-top:10px;">لا يوجد أرشيف بعد. لما تضغط "أرشفة الآن"، يتم حفظ نقاط ${child.name} الحالية هنا للمقارنة، ثم تبدأ من صفر من جديد.</div>`}
     </div>
 
     <div class="panel log-section">
