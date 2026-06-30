@@ -7,11 +7,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="بنّاء العقل">
+<meta name="apple-mobile-web-app-title" content="عقلي وشخصيتي">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
-<title>بنّاء العقل - متابعة تطور الأبناء</title>
+<title>عقلي وشخصيتي - متابعة تطور الأبناء</title>
 <style>
   :root{
     --bg:#eef1f8; --panel:#ffffff; --panel2:#f4f6fb;
@@ -150,19 +150,27 @@
   .goal-history{margin-top:10px; font-size:12px; color:var(--muted);}
   .goal-history-row{display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--border);}
   .goal-history-row:last-child{border-bottom:none;}
+
+  .settings-fab{
+    position:fixed; top:16px; left:16px; z-index:40;
+    width:44px; height:44px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px; cursor:pointer; box-shadow:0 2px 10px rgba(30,40,80,.12);
+    transition:.15s;
+  }
+  .settings-fab:hover{ transform:rotate(25deg); border-color:var(--gold); }
 </style>
 </head>
 <body>
+<div class="settings-fab" onclick="openSettings()" title="إعدادات ولي الأمر">⚙</div>
 <div class="wrap">
   <div class="title">
-    <h1>🧠 بنّاء العقل</h1>
+    <h1>🧠 عقلي وشخصيتي</h1>
     <p>مؤشر تطور القراءة، الكتابة، حفظ القرآن، والمهارات بأهداف دورية</p>
   </div>
 
   <div class="topbar" id="childTabs"></div>
-  <div style="text-align:center;margin-bottom:14px;">
-    <button class="btn btn-sub" onclick="openSettings()">⚙ إعدادات ولي الأمر (الأقسام)</button>
-  </div>
   <div id="content"><div class="loading">جارِ التحميل...</div></div>
 </div>
 
@@ -239,6 +247,20 @@
   </div>
 </div>
 
+<div class="modal-bg" id="childCatsModal">
+  <div class="modal">
+    <h3 id="childCatsTitle">✅ أقسام الطفل</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+      حدد الأقسام المناسبة لهذا الطفل فقط (مثلاً عمره الأصغر، ما يحتاج كل الأقسام). الأقسام غير المحددة تختفي من واجهته فقط — بياناتها تبقى محفوظة.
+    </div>
+    <div id="childCatsList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('childCatsModal')">إلغاء</button>
+      <button class="btn btn-add" onclick="saveChildCats()">حفظ ✓</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let CATS = [
   {key:'quran', name:'حفظ القرآن',     icon:'🕌', color:'var(--green)'},
@@ -280,13 +302,7 @@ function catKeyFromName(name){
 // otherwise falls back to the browser's localStorage automatically (e.g. on GitHub Pages).
 const appStorage = (function(){
   const hasClaudeStorage = (typeof window !== 'undefined') && window.storage && typeof window.storage.get === 'function';
-  if(hasClaudeStorage){
-    return {
-      get: (key)=> window.storage.get(key),
-      set: (key, value)=> window.storage.set(key, value)
-    };
-  }
-  return {
+  const localImpl = {
     get: async (key)=>{
       const v = localStorage.getItem(key);
       return v===null ? null : { key, value: v };
@@ -296,13 +312,38 @@ const appStorage = (function(){
       return { key, value };
     }
   };
+  if(!hasClaudeStorage) return localImpl;
+  // Use Claude's storage when available, but self-heal to localStorage
+  // automatically if it ever throws (e.g. unstable preview environments).
+  return {
+    get: async (key)=>{
+      try{ return await window.storage.get(key); }
+      catch(e){ console.warn('Claude storage get failed, falling back to localStorage', e); return localImpl.get(key); }
+    },
+    set: async (key, value)=>{
+      try{ return await window.storage.set(key, value); }
+      catch(e){ console.warn('Claude storage set failed, falling back to localStorage', e); return localImpl.set(key, value); }
+    }
+  };
 })();
+
+function enabledCatsFor(child){
+  if(!child.enabledCats || !child.enabledCats.length){
+    return CATS.slice();
+  }
+  const set = new Set(child.enabledCats);
+  return CATS.filter(c=> set.has(c.key));
+}
 
 function ensureChildDefaults(child){
   if(!child.goalPeriod) child.goalPeriod = 'week';
   if(!child.goalStart) child.goalStart = todayStr();
   if(!child.goalHistory) child.goalHistory = [];
   if(!child.streakDays) child.streakDays = [];
+  if(!child.enabledCats) child.enabledCats = CATS.map(c=>c.key);
+  // keep enabledCats in sync: drop keys that no longer exist globally
+  child.enabledCats = child.enabledCats.filter(k=> CATS.some(c=>c.key===k));
+  if(!child.enabledCats.length) child.enabledCats = CATS.map(c=>c.key);
   CATS.forEach(c=>{
     if(!child.cats[c.key]) child.cats[c.key] = {points:0, logs:[]};
     if(!child.cats[c.key].logs) child.cats[c.key].logs = [];
@@ -343,7 +384,7 @@ function scheduleSave(){
 function newChildData(name, avatar){
   const cats = {};
   CATS.forEach(c=> cats[c.key] = {points:0, logs:[]});
-  return { id: uid(), name, avatar, cats, streakDays: [], goalPeriod:'week', goalStart: todayStr(), goalHistory: [] };
+  return { id: uid(), name, avatar, cats, streakDays: [], goalPeriod:'week', goalStart: todayStr(), goalHistory: [], enabledCats: CATS.map(c=>c.key) };
 }
 
 function openModal(id){ document.getElementById(id).classList.add('show'); }
@@ -374,7 +415,7 @@ function levelInfo(points){
 }
 
 function totalPoints(child){
-  return CATS.reduce((s,c)=> s + ((child.cats[c.key]||{}).points||0), 0);
+  return enabledCatsFor(child).reduce((s,c)=> s + ((child.cats[c.key]||{}).points||0), 0);
 }
 
 function todayStr(){
@@ -449,7 +490,10 @@ function addCategory(){
   const color = CAT_COLOR_CYCLE[CATS.length % CAT_COLOR_CYCLE.length];
   CATS.push({key, name, icon, color});
   state.categories = CATS;
-  state.children.forEach(ch=>{ if(!ch.cats[key]) ch.cats[key] = {points:0, logs:[]}; });
+  state.children.forEach(ch=>{
+    if(!ch.cats[key]) ch.cats[key] = {points:0, logs:[]};
+    if(ch.enabledCats && !ch.enabledCats.includes(key)) ch.enabledCats.push(key);
+  });
   document.getElementById('newCatName').value='';
   document.getElementById('newCatIcon').value='';
   scheduleSave();
@@ -463,6 +507,9 @@ function deleteCategory(key){
   if(!confirm('حذف هذا القسم سيخفيه من الواجهة (تبقى بياناته القديمة محفوظة). متأكد؟')) return;
   CATS = CATS.filter(c=>c.key!==key);
   state.categories = CATS;
+  state.children.forEach(ch=>{
+    if(ch.enabledCats) ch.enabledCats = ch.enabledCats.filter(k=>k!==key);
+  });
   scheduleSave();
   renderSettingsModal();
   render();
@@ -502,6 +549,31 @@ function saveGoalSettings(){
   scheduleSave();
   render();
   showToast('🎯 تم ضبط الهدف');
+}
+
+function openChildCats(){
+  const child = getActive();
+  if(!child) return;
+  document.getElementById('childCatsTitle').textContent = '✅ أقسام ' + child.name;
+  const enabledSet = new Set(child.enabledCats || CATS.map(c=>c.key));
+  document.getElementById('childCatsList').innerHTML = CATS.map(c=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px dashed var(--border);">
+      <input type="checkbox" value="${c.key}" ${enabledSet.has(c.key)?'checked':''} style="width:auto;margin:0;">
+      <span>${c.icon} ${c.name}</span>
+    </label>`).join('');
+  openModal('childCatsModal');
+}
+
+function saveChildCats(){
+  const child = getActive();
+  if(!child) return;
+  const checked = Array.from(document.querySelectorAll('#childCatsList input[type=checkbox]:checked')).map(i=>i.value);
+  if(checked.length===0){ showToast('لازم تختار قسم واحد على الأقل'); return; }
+  child.enabledCats = checked;
+  closeModal('childCatsModal');
+  scheduleSave();
+  render();
+  showToast('✅ تم تحديث أقسام ' + child.name);
 }
 
 function calcStreak(child){
@@ -544,7 +616,7 @@ function daysBetween(a,b){
 function pointsInRange(child, startStr, endStr){
   const byCat = {};
   let total = 0;
-  CATS.forEach(c=>{
+  enabledCatsFor(child).forEach(c=>{
     let sum = 0;
     ((child.cats[c.key]||{}).logs||[]).forEach(l=>{
       if(l.date >= startStr && l.date < endStr) sum += l.points;
@@ -600,7 +672,7 @@ function goalBanner(child){
   const periodDays = periodDaysFor(child);
   // last activity gap (any category)
   let lastDate = null;
-  CATS.forEach(c=> (child.cats[c.key].logs||[]).forEach(l=>{ if(!lastDate || l.date > lastDate) lastDate = l.date; }));
+  enabledCatsFor(child).forEach(c=> (child.cats[c.key]?.logs||[]).forEach(l=>{ if(!lastDate || l.date > lastDate) lastDate = l.date; }));
   let gapDays = 99;
   if(lastDate){ gapDays = Math.floor((today - new Date(lastDate)) / (1000*60*60*24)); }
 
@@ -623,7 +695,7 @@ const BADGES = [
   {id:'reader', name:'نجم القراءة', icon:'📚', test: c=> (c.cats.read?.points||0) >= 30},
   {id:'writer', name:'يد ذهبية', icon:'🖋️', test: c=> (c.cats.write?.points||0) >= 30},
   {id:'hafiz', name:'حافظ مجتهد', icon:'🕋', test: c=> (c.cats.quran?.points||0) >= 30},
-  {id:'allrounder', name:'العقل الشامل', icon:'🌟', test: c=> CATS.every(cat=> (c.cats[cat.key]?.points||0)>=20)},
+  {id:'allrounder', name:'العقل الشامل', icon:'🌟', test: c=> enabledCatsFor(c).every(cat=> (c.cats[cat.key]?.points||0)>=20)},
   {id:'streak7', name:'أسبوع الإصرار', icon:'🔥', test: c=> calcStreak(c) >= 7},
   {id:'century', name:'فارس المئة', icon:'🏆', test: c=> totalPoints(c) >= 100},
 ];
@@ -720,7 +792,7 @@ function render(){
   const banner = goalBanner(child);
   const elapsedDays = Math.max(0, periodDays - Math.max(0,daysBetween(new Date(), goalEndDate(child))));
 
-  let catsHtml = CATS.map(c=>{
+  let catsHtml = enabledCatsFor(child).map(c=>{
     const data = child.cats[c.key] || {points:0, logs:[]};
     const li = levelInfo(data.points);
     const lastLog = data.logs[0];
@@ -751,7 +823,7 @@ function render(){
 
   // recent activity across all cats
   let allLogs = [];
-  CATS.forEach(c=> (child.cats[c.key]?.logs||[]).forEach(l=> allLogs.push({...l, cat:c.name, icon:c.icon})));
+  enabledCatsFor(child).forEach(c=> (child.cats[c.key]?.logs||[]).forEach(l=> allLogs.push({...l, cat:c.name, icon:c.icon})));
   allLogs.sort((a,b)=> (b.date+b.time).localeCompare(a.date+a.time));
   allLogs = allLogs.slice(0,8);
   let logsHtml = allLogs.length ? allLogs.map(l=>
@@ -782,7 +854,10 @@ function render(){
       <div class="goal-box">
         <div class="goal-head">
           <div class="goal-title">🎯 هدف الـ${GOAL_LABELS[child.goalPeriod]} الحالي — يوم ${elapsedDays} من ${periodDays}${child.goalPeriod==='custom'?` (${child.goalStart} → ${child.goalCustomEnd})`:''}</div>
-          <button class="btn btn-sub" style="padding:6px 12px;" onclick="openGoalSettings()">⚙ تعديل الهدف</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-sub" style="padding:6px 12px;" onclick="openChildCats()">✅ أقسام ${child.name}</button>
+            <button class="btn btn-sub" style="padding:6px 12px;" onclick="openGoalSettings()">⚙ تعديل الهدف</button>
+          </div>
         </div>
         <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${goalPct}%;"></div></div>
         <div style="font-size:12px;color:var(--muted);margin-top:6px;">${goalProgress.total} / ${goalTarget} نقطة تقريبية لتحقيق الهدف بالكامل (⭐⭐⭐)</div>
